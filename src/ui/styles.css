@@ -380,7 +380,8 @@ main { min-width: 0; }
 .glossary dt { font-weight: 650; margin-top: var(--s2); } .glossary dd { margin: 0 0 4px; color: var(--muted); }
 
 /* Stress test */
-.stress { display: grid; gap: var(--s3); }
+.stress { display: grid; gap: var(--s3); grid-template-columns: minmax(0, 1fr); }
+.stress > * { min-width: 0; }
 .st-key { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); margin: 0; font-size: 0.84rem; }
 .st-key div { display: flex; gap: 6px; } .st-key dt { font-weight: 700; color: var(--ink); } .st-key dd { margin: 0; color: var(--muted); }
 .st-scenarios { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -406,7 +407,8 @@ main { min-width: 0; }
 .st-callout__title { font-weight: 750; margin-bottom: 6px !important; color: var(--ink); }
 .st-callout--good { background: var(--ok-bg); border: 1px solid var(--ok-line); }
 .st-callout--bad { background: var(--act-bg); border: 1px solid var(--act-line); }
-.stress__scroll { overflow-x: auto; }
+.stress__scroll { overflow-x: auto; max-width: 100%; }
+.stress details { max-width: 100%; overflow: hidden; }
 .stress__table { border-collapse: collapse; width: 100%; font-size: 0.84rem; }
 .stress__table th, .stress__table td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
 .stress__table thead th { background: var(--surface-2); color: var(--muted); font-weight: 650; }
@@ -485,3 +487,19 @@ main { min-width: 0; }
   .attn .status-badge { grid-column: 2; justify-self: start; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+/* ---------- Guided demo: short captions + on-page highlight ---------- */
+.tour__fact { font-size: 1.02rem; font-weight: 700; color: var(--ink); margin: 6px 0 4px; line-height: 1.35; }
+.tour__line { font-size: 0.9rem; color: var(--muted); margin: 0 0 8px; }
+.tour__look { font-size: 0.8rem; font-weight: 650; color: var(--accent, #2b50c8); margin: 0; }
+.tour-target { outline: 3px solid var(--accent, #2b50c8); outline-offset: 4px; border-radius: 16px; animation: tourPulse 1.6s ease-out 2; }
+@keyframes tourPulse { 0% { box-shadow: 0 0 0 0 rgba(43, 80, 200, 0.35); } 100% { box-shadow: 0 0 0 14px rgba(43, 80, 200, 0); } }
+@media (prefers-reduced-motion: reduce) { .tour-target { animation: none; } }
+/* Phones: keep the intro short so the dashboard is visible on the first screen */
+@media (max-width: 560px) {
+  .intro .status-legend { display: none; }
+  .intro p { font-size: 0.88rem; }
+  .intro__actions .btn { flex: 1 1 auto; }
+}
+/* Wide tables scroll inside their own box; the page itself never scrolls sideways. */
+html, body { overflow-x: clip; }
