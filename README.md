@@ -35,7 +35,7 @@ When something is WATCH or ACT, BASELINE drafts an editable **SBAR note** for th
 
 ## Demo
 
-- **Live demo:** LIVE_URL
+- **Live demo:** https://baseline-space-health.vercel.app
 - **Source:** https://github.com/sridharan-71/baseline-space-health
 - Fictional astronaut: Cmdr. Asha Rao (SIMULATED), 99 days into a 110-day mission (seed 2026). Every screen uses the same simulated dataset.
 - Press **Guided demo** in the header (5 steps, about 2 minutes):

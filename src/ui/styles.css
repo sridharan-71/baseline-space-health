@@ -459,7 +459,8 @@ main { min-width: 0; }
   .chart__box { min-height: 260px; }
   .status-legend { grid-template-columns: 1fr 1fr; gap: 10px 12px; }
   .status-legend li { font-size: 0.76rem; line-height: 1.35; }
-  .status-legend .status-badge { font-size: 0.74rem; }
+  .status-legend .status-badge { font-size: 0.72rem; white-space: normal; max-width: 100%; }
+  .status-legend { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .intro { padding: var(--s4); }
   .intro p { font-size: 0.9rem; }
   .tabs--bottom .tab { font-size: 0.66rem; }
