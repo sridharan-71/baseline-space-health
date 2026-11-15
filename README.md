@@ -135,4 +135,4 @@ Code was written with Anthropic Claude (Claude Code) under the team's direction;
 
 ## Team and licence
 
-Team: _add names_. Code licensed under MIT.
+Team ROOM001 (Coimbatore): Sridharan R, Haritha Vasavi M, Hari Prasad P, Keren Doss Karlin J, Anushree S. Code licensed under MIT.
