@@ -49,127 +49,171 @@ export function CmoNoteScreen() {
 
   const sections = parseSbar(text);
   const flagged = day.metrics.filter((m) => m.status === 'WATCH' || m.status === 'ACT');
+  const gapLine = (sections.B ?? []).find((l) => l.startsWith('Data gaps')) ?? null;
 
   return (
     <section className="screen" aria-labelledby="note-title">
       <header className="page-head">
         <div>
           <h2 id="note-title">Note to the medical officer · {friendlyDay(selectedDay)}</h2>
-          <p className="muted">
-            A first draft for the <strong>crew medical officer</strong> (CMO) — the crew member trained to give medical
-            care on board. She reviews and edits it before sharing. Format: SBAR, the structure hospital teams use for
-            handovers.
-          </p>
+          <p className="muted">A draft for the crew medical officer. Read it, edit if needed, then copy or download.</p>
         </div>
         <DayStepper compact />
       </header>
 
-      <div className={`note-status note-status--${day.overall.toLowerCase()}`}>
-        <StatusBadge status={day.overall} large />
-        <p className="overall__summary">
-          {day.cmoSuggested ? 'BASELINE suggests sending this to the crew medical officer.' : 'Nothing needs reporting today'}
-        </p>
+      <div className="note-bar">
+        <div className={`note-status note-status--${day.overall.toLowerCase()}`}>
+          <StatusBadge status={day.overall} />
+          <p className="overall__summary">
+            {day.cmoSuggested ? 'BASELINE suggests sending this to the crew medical officer.' : 'Nothing needs reporting today'}
+          </p>
+        </div>
+        <div className="note-actions">
+          <button type="button" className="btn btn--primary" onClick={copy}>
+            Copy note
+          </button>
+          <button type="button" className="btn btn--ghost" onClick={download}>
+            Download .txt
+          </button>
+          {msg && (
+            <span className="success" role="status">
+              {msg}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="note-layout">
-        <div className="sbar" aria-label="Note preview">
-          <header className="sbar__doc">
-            <div>
-              <p className="eyebrow">Handoff note · SBAR · draft</p>
-              <p className="sbar__route">To: Crew medical officer · From: {input.astronaut.displayName} · {formatDay(selectedDay)}</p>
-            </div>
-            <span className="pill pill--sim">SIMULATED</span>
-          </header>
-          {SBAR.map((k) => (
-            <article key={k.key} className="sbar__section">
-              <span className="sbar__letter" aria-hidden="true">{k.key}</span>
-              <div>
-                <h3>{k.title}</h3>
-                <p className="sbar__hint">{k.hint}</p>
-                {(sections[k.key] ?? []).length > 0 ? (
-                  <ul className="sbar__lines">
-                    {sections[k.key]!.map((l, i) => (
-                      <li key={i}>{l}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="muted">Empty — add text in the editor.</p>
-                )}
-                {k.key === 'A' && flagged.length > 0 && (
-                  <table className="support">
-                    <caption>Supporting readings · from the app, not a clinical judgement</caption>
-                    <thead>
-                      <tr><th scope="col">Measure</th><th scope="col">{formatDay(selectedDay)}</th><th scope="col">Compared with</th><th scope="col">Unusual days</th><th scope="col">How sure</th></tr>
-                    </thead>
-                    <tbody>
-                      {flagged.map((m) => {
-                        const ref = referenceFor(m);
-                        return (
-                          <tr key={m.metricId}>
-                            <th scope="row">{SHORT_LABEL[m.metricId]}</th>
-                            <td>{m.value === null ? 'No reading' : formatValue(m.metricId, m.value)}</td>
-                            <td>{ref ? `${formatValue(m.metricId, ref.value)} (${ref.kind === 'space-model' ? 'expected in space' : 'usual before launch'})` : '—'}</td>
-                            <td>{m.persistence.flaggedOfLastAvailable} of last {m.persistence.availableInWindow}</td>
-                            <td>{CONFIDENCE_WORD[m.confidence]}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
+      <article className="doc" aria-label="Note preview">
+        <header className="doc__head">
+          <div>
+            <p className="eyebrow">SBAR handoff · draft{edited ? ' · edited' : ''}</p>
+            <p className="doc__route">
+              To: Crew medical officer · From: {input.astronaut.displayName} · {formatDay(selectedDay)}
+            </p>
+          </div>
+          <span className="pill pill--sim">SIMULATED</span>
+        </header>
 
-        <div className="note-editor panel">
-          <header className="panel__head">
-            <h3>Review and edit before sharing</h3>
-            {edited && <span className="panel__meta">Edited</span>}
-          </header>
-          <p className="notice">Draft generated by a prototype from SIMULATED data. Review before sending. BASELINE does not diagnose.</p>
-          <label htmlFor="cmo-note" className="visually-hidden">
-            CMO note draft
-          </label>
-          <textarea
-            id="cmo-note"
-            ref={ref}
-            className="note-text"
-            rows={18}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              setEdited(true);
-            }}
-          />
-          <div className="note-actions">
-            <button type="button" className="btn btn--primary" onClick={copy}>
-              Copy note
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={download}>
-              Download .txt
-            </button>
-            {edited && (
-              <button
-                type="button"
-                className="btn btn--ghost"
-                onClick={() => {
-                  setEdited(false);
-                  setText(draft);
-                }}
-              >
-                Reset to draft
-              </button>
-            )}
-            {msg && (
-              <span className="success" role="status">
-                {msg}
-              </span>
+        <section className="doc__sec">
+          <span className="doc__letter" aria-hidden="true">S</span>
+          <div>
+            <h3>Situation</h3>
+            <Lines lines={sections.S} />
+          </div>
+        </section>
+
+        <section className="doc__sec">
+          <span className="doc__letter" aria-hidden="true">B</span>
+          <div>
+            <h3>Background</h3>
+            {edited ? (
+              <Lines lines={sections.B} />
+            ) : (
+              <>
+                <table className="support">
+                  <thead>
+                    <tr><th scope="col">Measure</th><th scope="col">Usual before launch</th><th scope="col">Expected today</th></tr>
+                  </thead>
+                  <tbody>
+                    {day.metrics.map((m) => (
+                      <tr key={m.metricId}>
+                        <th scope="row">{SHORT_LABEL[m.metricId]}</th>
+                        <td>{m.preflight.n > 0 ? formatValue(m.metricId, m.preflight.mean) : '—'}</td>
+                        <td>{m.expected ? formatValue(m.metricId, m.expected.value) : <span className="muted">no space model</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {gapLine && <p className="doc__gap">{gapLine}</p>}
+              </>
             )}
           </div>
-        </div>
-      </div>
+        </section>
+
+        <section className="doc__sec">
+          <span className="doc__letter" aria-hidden="true">A</span>
+          <div>
+            <h3>Assessment <span className="doc__sub">app output, not a clinical judgement</span></h3>
+            {edited || flagged.length === 0 ? (
+              <Lines lines={sections.A} />
+            ) : (
+              <table className="support">
+                <thead>
+                  <tr><th scope="col">Measure</th><th scope="col">{formatDay(selectedDay)}</th><th scope="col">Compared with</th><th scope="col">Unusual days</th><th scope="col">How sure</th></tr>
+                </thead>
+                <tbody>
+                  {flagged.map((m) => {
+                    const ref = referenceFor(m);
+                    return (
+                      <tr key={m.metricId}>
+                        <th scope="row">
+                          {SHORT_LABEL[m.metricId]} <StatusBadge status={m.status} />
+                        </th>
+                        <td>{m.value === null ? 'No reading' : formatValue(m.metricId, m.value)}</td>
+                        <td>{ref ? formatValue(m.metricId, ref.value) : '—'}</td>
+                        <td>{m.persistence.flaggedOfLastAvailable} of {m.persistence.availableInWindow}</td>
+                        <td>{CONFIDENCE_WORD[m.confidence]}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </section>
+
+        <section className="doc__sec">
+          <span className="doc__letter" aria-hidden="true">R</span>
+          <div>
+            <h3>Request</h3>
+            <Lines lines={sections.R} />
+          </div>
+        </section>
+        <p className="notice doc__foot">Draft generated by a prototype from SIMULATED data. Review before sending. BASELINE does not diagnose.</p>
+      </article>
+
+      <details className="card note-edit" open={edited || undefined}>
+        <summary>Edit the text before sharing</summary>
+        <label htmlFor="cmo-note" className="visually-hidden">
+          CMO note draft
+        </label>
+        <textarea
+          id="cmo-note"
+          ref={ref}
+          className="note-text"
+          rows={16}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            setEdited(true);
+          }}
+        />
+        {edited && (
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => {
+              setEdited(false);
+              setText(draft);
+            }}
+          >
+            Reset to draft
+          </button>
+        )}
+      </details>
     </section>
+  );
+}
+
+function Lines({ lines }: { lines?: string[] }) {
+  if (!lines || lines.length === 0) return <p className="muted">Empty — add text in the editor below.</p>;
+  if (lines.length === 1) return <p className="doc__text">{lines[0]}</p>;
+  return (
+    <ul className="doc__lines">
+      {lines.map((l, i) => (
+        <li key={i}>{l}</li>
+      ))}
+    </ul>
   );
 }
 

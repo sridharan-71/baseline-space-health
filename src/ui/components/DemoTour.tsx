@@ -81,7 +81,7 @@ function Caption({ step }: { step: number }) {
   );
 }
 
-const TARGET = ['.overall', '.chart', 'section.same', '[data-testid=card-restingHR]', '.sbar'];
+const TARGET = ['.overall', '.chart', 'section.same', '[data-testid=card-restingHR]', '.doc'];
 
 function highlight(sel: string | null) {
   document.querySelectorAll('.tour-target').forEach((el) => el.classList.remove('tour-target'));

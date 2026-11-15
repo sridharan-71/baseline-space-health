@@ -73,9 +73,8 @@ export function StressTestTable() {
   return (
     <div className="stress">
       <p className="lead">
-        The demo astronaut follows the research average exactly, so BASELINE is bound to look good on her. Here the{' '}
-        <strong>same engine</strong> runs on 8 hypothetical astronauts who adapt differently. All simulated — “what if”
-        cases, not research findings.
+        The demo astronaut follows the research average, which flatters BASELINE. So the <strong>same engine</strong> runs
+        on 8 simulated astronauts who adapt differently. Pick one.
       </p>
       <dl className="st-key">
         <div><dt>False alert</dt><dd>an alert on a day with no problem</dd></div>

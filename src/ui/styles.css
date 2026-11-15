@@ -503,3 +503,42 @@ main { min-width: 0; }
 }
 /* Wide tables scroll inside their own box; the page itself never scrolls sideways. */
 html, body { overflow-x: clip; }
+
+/* ---------- Note to doctor: one document, editor folded away ---------- */
+.note-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s3) var(--s4); box-shadow: var(--shadow); }
+.note-bar .overall__summary { font-size: 0.95rem; }
+.doc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); overflow: hidden; }
+.doc__head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s3); padding: var(--s4) var(--s5); background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.doc__route { margin: 0; font-size: 0.88rem; color: var(--ink); }
+.doc__sec { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: var(--s3); padding: var(--s4) var(--s5); border-bottom: 1px solid var(--line); }
+.doc__sec h3 { margin: 4px 0 6px; font-size: 1rem; }
+.doc__sec .support { margin-top: 4px; }
+.doc__letter { width: 34px; height: 34px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; }
+.doc__sub { font-size: 0.74rem; font-weight: 500; color: var(--muted); margin-left: 6px; }
+.doc__text { margin: 0; font-size: 0.95rem; }
+.doc__lines { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 0.9rem; }
+.doc__gap { margin: 8px 0 0; font-size: 0.85rem; color: var(--unk); font-weight: 600; }
+.doc__foot { margin: var(--s4) var(--s5); }
+.doc .support .status-badge { font-size: 0.7rem; margin-left: 4px; vertical-align: 1px; }
+.note-edit { }
+.note-edit summary { cursor: pointer; font-weight: 650; color: var(--ink); }
+.note-edit[open] summary { margin-bottom: var(--s3); }
+.note-edit .note-text { margin-bottom: var(--s2); }
+
+/* ---------- Science: simple chain and two columns ---------- */
+.chain { list-style: none; padding: 0; margin: var(--s3) 0 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chain__step { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 0.88rem; color: var(--ink); font-weight: 550; }
+.chain__step + .chain__step::before { content: '→'; color: var(--faint); margin: 0 4px 0 -2px; order: -1; display: none; }
+.chain__step--key { background: var(--accent-soft); border-color: #cfd9fb; }
+.chain__n { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-size: 0.75rem; font-weight: 700; }
+.two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s5); }
+.side { border-radius: var(--r); padding: var(--s4); border: 1px solid var(--line); }
+.side--research { background: #f2f5ff; border-color: #cfd9fb; }
+.side--assumed { background: var(--surface-2); }
+.side__title { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 750; color: var(--muted); margin: 0 0 var(--s2); }
+.side--research .side__title { color: var(--accent); }
+.side ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.side li { display: grid; gap: 2px; font-size: 0.92rem; }
+.side li span { font-size: 0.8rem; color: var(--muted); }
+.side--assumed li::before { content: none; }
+@media (max-width: 760px) { .two-col { grid-template-columns: minmax(0, 1fr); } .doc__sec { grid-template-columns: minmax(0, 1fr); padding: var(--s4); } .doc__letter { display: none; } .doc .support { display: block; overflow-x: auto; } }
