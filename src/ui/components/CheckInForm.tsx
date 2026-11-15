@@ -1,5 +1,6 @@
+import { friendlyDay } from '../plain';
 import { useState, type FormEvent } from 'react';
-import { METRICS, SYMPTOM_LABELS, formatDay, type MetricId, type SymptomId } from '../../engine/index';
+import { METRICS, SYMPTOM_LABELS, type MetricId, type SymptomId } from '../../engine/index';
 import { useMission } from '../../state/MissionContext';
 
 const NUMBER_FIELDS: { id: Exclude<MetricId, 'mood'>; step: string }[] = [
@@ -18,7 +19,7 @@ export function CheckInForm({ day }: { day: number }) {
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [saved, setSaved] = useState<string | null>(null);
 
-  const label = formatDay(day);
+  const label = friendlyDay(day);
 
   function toggleSymptom(s: SymptomId) {
     setSymptoms((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
@@ -62,15 +63,15 @@ export function CheckInForm({ day }: { day: number }) {
   if (!open) {
     return (
       <button type="button" className="btn btn--primary" onClick={() => setOpen(true)}>
-        Check in for {label}
+        Enter readings for {label}
       </button>
     );
   }
 
   return (
-    <form className="checkin" onSubmit={onSubmit} aria-label={`Check in for ${label}`} noValidate>
+    <form className="checkin" onSubmit={onSubmit} aria-label={`Enter readings for ${label}`} noValidate>
       <div className="checkin__head">
-        <h3>Check in for {label}</h3>
+        <h3>Enter readings for {label}</h3>
         <button type="button" className="btn btn--ghost" onClick={() => setOpen(false)}>
           Close
         </button>

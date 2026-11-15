@@ -24,7 +24,7 @@ describe('assessMetric — status paths', () => {
     expect(a.status).toBe('OK');
     expect(a.confidence).toBe('HIGH');
     expect(a.layers[2]!.outcome).toBe('NOT_APPLICABLE');
-    expect(a.headline).toBe('Resting heart rate: within your expected range.');
+    expect(a.headline).toBe('Resting heart rate: within your usual range.');
     expect(a.nextStep).toBe('No action needed.');
   });
   it('OK with adaptation even though pre-flight z is high', () => {
@@ -40,19 +40,19 @@ describe('assessMetric — status paths', () => {
     const a = assessMetric(hr({ 1: 60, 2: 60, 3: 65 }), 'restingHR', 3);
     expect(a.status).toBe('WATCH');
     expect(a.persistence.flaggedOfLastAvailable).toBe(1);
-    expect(a.headline).toMatch(/outside your expected range today \(65 vs expected 60\.0 ± 4\.1 bpm\)/);
+    expect(a.headline).toMatch(/outside your usual range today \(65 vs usual 60\.0 ± 4\.1 bpm\)/);
     expect(a.nextStep).toBe('Re-check within 24 h. Note how you feel.');
   });
   it('ACT with persistence', () => {
     const a = assessMetric(hr({ 1: 60, 2: 66, 3: 66 }), 'restingHR', 3);
     expect(a.status).toBe('ACT');
-    expect(a.headline).toBe('Resting heart rate: outside your expected range on 2 of the last 3 available days.');
+    expect(a.headline).toBe('Resting heart rate: outside your usual range on 2 of the last 3 available days.');
     expect(a.nextStep).toMatch(/Contact your crew medical officer/);
   });
-  it('ACT via Earth crossings even when z is small', () => {
+  it('Earth crossings alone raise WATCH (never hidden) but do not escalate to ACT', () => {
     const a = assessMetric(hr({ 1: 101, 2: 101 }, alt(30, 98, 2)), 'restingHR', 2);
     expect(a.zExpected!).toBeLessThan(2);
-    expect(a.status).toBe('ACT');
+    expect(a.status).toBe('WATCH');
     expect(a.earthCrossed).toBe(true);
   });
   it('WATCH via cool-down after an ACT day', () => {

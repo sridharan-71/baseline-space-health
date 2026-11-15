@@ -65,7 +65,7 @@ export function buildCmoNote(day: DayAssessment, input: MissionInput): string {
         .filter((s) => s && s.kind === 'RESEARCH')
         .map((s) => s!.shortCite)
         .join(', ');
-      exp = `expected today ${formatValue(m.metricId, m.expected.value)} per ${cite} (group-mean curve; design assumption)`;
+      exp = `expected today ${formatValue(m.metricId, m.expected.value)} (shape of change from ${cite}; size personalised to her own in-flight data: ${m.expected.scale.toFixed(2)}× the research average; design assumption)`;
     }
     lines.push(`- ${def.label}: ${pre}; ${exp}.`);
   }
@@ -76,7 +76,7 @@ export function buildCmoNote(day: DayAssessment, input: MissionInput): string {
     const def = METRICS[m.metricId];
     const value = m.value === null ? 'no reading' : `${formatValue(m.metricId, m.value)} today`;
     lines.push(
-      `- ${def.label} — ${m.status}: ${value}; outside the expected range on ${m.persistence.flaggedOfLastAvailable} of the last ${m.persistence.availableInWindow} available days${m.earthCrossed ? '; past the general Earth reference' : ''}; confidence ${CONF_WORD[m.confidence]}.`,
+      `- ${def.label} — ${m.status}: ${value}; outside the ${m.expected ? 'expected' : 'usual'} range on ${m.persistence.flaggedOfLastAvailable} of the last ${m.persistence.availableInWindow} available days${m.earthCrossed ? '; past the general Earth reference' : ''}; confidence ${CONF_WORD[m.confidence]}.`,
     );
   }
   lines.push('');

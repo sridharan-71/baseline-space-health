@@ -3,7 +3,6 @@ import { MissionProvider, useMission } from '../state/MissionContext';
 import { DemoTour, TOUR_FIRST_STEP } from './components/DemoTour';
 import { SimulatedBanner } from './components/SimulatedBanner';
 import { Tabs } from './components/Tabs';
-import { BodyScreen } from './screens/BodyScreen';
 import { CmoNoteScreen } from './screens/CmoNoteScreen';
 import { EvidenceScreen } from './screens/EvidenceScreen';
 import { MeasureScreen } from './screens/MeasureScreen';
@@ -32,39 +31,48 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
 function Shell() {
   const { activeTab, jumpTo } = useMission();
   const [tourOpen, setTourOpen] = useState(false);
+  const startTour = () => {
+    setTourOpen(true);
+    jumpTo(TOUR_FIRST_STEP.day, TOUR_FIRST_STEP.metricId, TOUR_FIRST_STEP.tab);
+  };
   return (
     <>
-      <SimulatedBanner />
-      <header className="app-header">
-        <div className="app-header__brand">
-          <h1>BASELINE</h1>
-          <p className="tagline">Your normal, not Earth's normal.</p>
+      <a className="skip-link" href="#main">Skip to content</a>
+      <header className="topbar">
+        <div className="topbar__inner">
+          <div className="brand">
+            <svg className="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+              <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.35" />
+              <path d="M4 19 C 10 19, 12 11, 16 11 S 22 19, 28 19" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="16" cy="11" r="2.4" fill="#7fd1a8" />
+            </svg>
+            <div>
+              <h1>BASELINE</h1>
+              <p className="tagline">Your normal, not Earth's normal.</p>
+            </div>
+          </div>
+          <Tabs />
+          <button type="button" className="btn btn--on-dark" onClick={startTour}>
+            ▶ Guided demo
+          </button>
         </div>
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => {
-            setTourOpen(true);
-            jumpTo(TOUR_FIRST_STEP.day, TOUR_FIRST_STEP.metricId, TOUR_FIRST_STEP.tab);
-          }}
-        >
-          Guided demo
-        </button>
       </header>
-      <Tabs />
+      <SimulatedBanner />
       <div className={`layout${tourOpen ? ' layout--tour' : ''}`}>
-        <main>
+        <main id="main">
           <ErrorBoundary key={activeTab}>
-            {activeTab === 'today' && <TodayScreen />}
+            {activeTab === 'today' && <TodayScreen onStartDemo={startTour} />}
             {activeTab === 'measure' && <MeasureScreen />}
             {activeTab === 'note' && <CmoNoteScreen />}
-            {activeTab === 'body' && <BodyScreen />}
             {activeTab === 'evidence' && <EvidenceScreen />}
           </ErrorBoundary>
         </main>
         {tourOpen && <DemoTour onClose={() => setTourOpen(false)} />}
       </div>
-      <footer className="app-footer">SIMULATED DATA · Not a medical device · Built for NASA Space Apps 2026</footer>
+      <footer className="app-footer">
+        SIMULATED DATA · Not a medical device · Decision-support prototype built for NASA Space Apps 2026
+      </footer>
+      <Tabs variant="bottom" />
     </>
   );
 }

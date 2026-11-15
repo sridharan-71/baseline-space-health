@@ -14,7 +14,7 @@ import {
 import { generateDemoMission } from '../data/simulated/mission';
 import { clear, load, save, type UserEntries } from './persistence';
 
-export type Tab = 'today' | 'measure' | 'note' | 'evidence' | 'body';
+export type Tab = 'today' | 'measure' | 'note' | 'evidence';
 export type ActionResult = { ok: true } | { ok: false; errors: string[] };
 
 const FIRST_DAY = -30;

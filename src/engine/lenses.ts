@@ -6,6 +6,7 @@ import { crossesEarthReference, getEarthReference } from '../evidence/references
 import { assessMetricDays } from './assess';
 import { computePreflightBaseline } from './baseline';
 import { WATCH_Z } from './config';
+import { calibrateScale, effectiveUncertainty } from './personalize';
 import { firstDay, getReading } from './readings';
 import { unhealthyZ } from './trend';
 
@@ -42,8 +43,9 @@ export function compareLenses(input: MissionInput, metricId: MetricId, upToDay: 
     let expectedLow: number | null = null;
     let expectedHigh: number | null = null;
     if (model && day > 0 && baseline.n > 0) {
-      const combinedSd = Math.sqrt(baseline.sd ** 2 + model.uncertainty ** 2);
-      expectedValue = baseline.mean + model.offset(day);
+      const cal = calibrateScale(input, metricId, model, baseline.mean, baseline.sd, day);
+      const combinedSd = Math.sqrt(baseline.sd ** 2 + effectiveUncertainty(model, cal) ** 2);
+      expectedValue = baseline.mean + cal.scale * model.offset(day);
       expectedLow = expectedValue - WATCH_Z * combinedSd;
       expectedHigh = expectedValue + WATCH_Z * combinedSd;
     }

@@ -7,7 +7,7 @@ beforeEach(() => localStorage.clear());
 
 function openNote() {
   render(<App />);
-  fireEvent.click(within(screen.getByRole('navigation', { name: 'Screens' })).getByRole('button', { name: 'CMO note' }));
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Screens' })).getByRole('button', { name: 'Note to doctor' }));
 }
 
 describe('CmoNoteScreen', () => {

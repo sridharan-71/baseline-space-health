@@ -8,7 +8,7 @@ beforeEach(() => localStorage.clear());
 
 function openMeasure() {
   render(<App />);
-  fireEvent.click(within(screen.getByRole('navigation', { name: 'Screens' })).getByRole('button', { name: 'Measure' }));
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Screens' })).getByRole('button', { name: 'Over time' }));
 }
 
 describe('MeasureScreen', () => {
@@ -24,7 +24,7 @@ describe('MeasureScreen', () => {
     openMeasure();
     fireEvent.click(screen.getByRole('button', { name: 'Resting heart rate' }));
     expect(within(screen.getByTestId('lens-earth')).getByText('0')).toBeInTheDocument();
-    expect(screen.getByText(/No research-based adaptation model for this measure — compared/)).toBeInTheDocument();
+    expect(screen.getByText(/No published research says how this measure changes in space/)).toBeInTheDocument();
   });
 
   it('sleep has no Earth reference', () => {
@@ -36,10 +36,10 @@ describe('MeasureScreen', () => {
   it('FD60 quick button shows Expected space adaptation PASS', () => {
     openMeasure();
     fireEvent.click(screen.getByRole('button', { name: 'FD60' }));
-    expect(screen.getByLabelText('Mission day: FD60')).toBeInTheDocument();
-    const layer = screen.getByText('Expected space adaptation').closest('li')!;
-    expect(within(layer).getByText('PASS')).toBeInTheDocument();
-    const pre = screen.getByText('Compared with your pre-flight normal').closest('li')!;
-    expect(within(pre).getByText('FLAG')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Drag to pick a day: Day 60 in space/)).toBeInTheDocument();
+    const layer = screen.getByText('Is it still different after allowing for normal space changes?').closest('li')!;
+    expect(within(layer).getByText('No')).toBeInTheDocument();
+    const pre = screen.getByText('Is it different from your normal before launch?').closest('li')!;
+    expect(within(pre).getByText('Yes')).toBeInTheDocument();
   });
 });

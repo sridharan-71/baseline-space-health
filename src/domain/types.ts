@@ -68,6 +68,10 @@ export interface ExpectedValue {
   offset: number;
   value: number;
   uncertainty: number;
+  /** Personal size of the adaptation relative to the research group mean (1 = same as the group). */
+  scale: number;
+  /** In-flight days of the astronaut's own data used to estimate `scale` (0 = research curve only). */
+  scaleDaysUsed: number;
   modelId: string | null;
 }
 
@@ -89,6 +93,8 @@ export interface MetricAssessment {
   reasons: string[];
   /** Plain-English reasons the confidence was lowered (empty when HIGH). */
   confidenceReasons: string[];
+  /** True when personal calibration (not the research curve) is what makes this reading look normal. */
+  adaptationUncertain?: boolean;
 }
 
 export interface DayAssessment {

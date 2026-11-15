@@ -2,7 +2,6 @@ import {
   Area,
   CartesianGrid,
   ComposedChart,
-  Legend,
   Line,
   ReferenceLine,
   ResponsiveContainer,
@@ -12,6 +11,7 @@ import {
 } from 'recharts';
 import { EARTH_REFERENCES, METRICS, formatDay, formatValue, type LensComparison, type Status } from '../../engine/index';
 import { STATUS_COLOR } from './StatusBadge';
+import { STATUS_PLAIN, friendlyDay } from '../plain';
 
 interface Point {
   day: number;
@@ -30,11 +30,11 @@ function ChartTooltip({ active, payload, metricId }: { active?: boolean; payload
   if (!active || !p) return null;
   return (
     <div className="chart-tooltip">
-      <strong>{formatDay(p.day)}</strong>
+      <strong>{friendlyDay(p.day)}</strong> <span className="muted">{formatDay(p.day)}</span>
       <div>Value: {p.value === null ? 'No reading' : formatValue(metricId, p.value)}</div>
-      <div>BASELINE: {p.status}</div>
-      <div>Outside pre-flight normal: {YES_NO(p.preflightFlag)}</div>
-      <div>Past Earth reference: {YES_NO(p.earthFlag)}</div>
+      <div>BASELINE: <strong>{STATUS_PLAIN[p.status]}</strong></div>
+      <div>Outside her pre-launch range: {YES_NO(p.preflightFlag)}</div>
+      <div>Past the Earth limit: {YES_NO(p.earthFlag)}</div>
     </div>
   );
 }
@@ -78,7 +78,7 @@ export function ThreeLensChart({ lens, selectedDay, currentDay }: { lens: LensCo
       <div className="chart__box">
         <ResponsiveContainer width="100%" height={320}>
           <ComposedChart data={data} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
-            <CartesianGrid stroke="#e6e8eb" vertical={false} />
+            <CartesianGrid stroke="#e7e9e4" vertical={false} />
             <XAxis
               dataKey="day"
               type="number"
@@ -94,13 +94,12 @@ export function ThreeLensChart({ lens, selectedDay, currentDay }: { lens: LensCo
               tickFormatter={(v: number) => v.toFixed(Math.min(def.decimals, 1))}
             />
             <Tooltip content={<ChartTooltip metricId={lens.metricId} />} />
-            <Legend verticalAlign="bottom" height={28} wrapperStyle={{ fontSize: 13 }} />
             <Area
               dataKey="preBand"
-              name="Your pre-flight normal"
+              name="Your normal before launch"
               type="linear"
-              stroke="#9aa0a6"
-              fill="#bdc1c6"
+              stroke="#a3aab3"
+              fill="#cfd4da"
               fillOpacity={0.45}
               isAnimationActive={false}
               activeDot={false}
@@ -108,10 +107,10 @@ export function ThreeLensChart({ lens, selectedDay, currentDay }: { lens: LensCo
             {hasModel && (
               <Area
                 dataKey="expBand"
-                name="Expected in flight (research-informed)"
+                name="Expected for her in space (research model)"
                 type="linear"
-                stroke="#1a73e8"
-                fill="#8ab4f8"
+                stroke="#2b50c8"
+                fill="#a9bcf2"
                 fillOpacity={0.45}
                 connectNulls={false}
                 isAnimationActive={false}
@@ -122,17 +121,17 @@ export function ThreeLensChart({ lens, selectedDay, currentDay }: { lens: LensCo
             {ref && (
               <ReferenceLine
                 y={ref.value}
-                stroke="#b3261e"
+                stroke="#b42318"
                 strokeDasharray="6 4"
                 strokeWidth={2}
                 ifOverflow="extendDomain"
-                label={{ value: ref.label, position: 'insideBottomRight', fill: '#b3261e', fontSize: 12 }}
+                label={{ value: ref.label, position: 'insideBottomRight', fill: '#b42318', fontSize: 12 }}
               />
             )}
             <ReferenceLine x={selectedDay} stroke="#111" strokeWidth={1.5} label={{ value: formatDay(selectedDay), position: 'top', fontSize: 12 }} />
             <Line
               dataKey="value"
-              name="Your readings"
+              name="Daily readings"
               type="linear"
               stroke="#3c4043"
               strokeWidth={1.2}
@@ -146,7 +145,7 @@ export function ThreeLensChart({ lens, selectedDay, currentDay }: { lens: LensCo
       </div>
       {!hasModel && (
         <figcaption className="chart__note">
-          No research-based adaptation model for this measure — compared with your pre-flight normal.
+          No published research says how this measure changes in space, so there is no blue band: BASELINE compares it with her normal before launch.
         </figcaption>
       )}
       <p className="visually-hidden">

@@ -18,12 +18,13 @@ import { computePreflightBaseline } from './baseline';
 import {
   ACT_Z,
   CONFIDENT_BASELINE_DAYS,
-  EARTH_CROSSINGS_FOR_ACT,
   MAX_LOOKBACK_DAYS,
   PERSIST_REQUIRED,
   WATCH_Z,
+  CALIBRATION_RISE_LIMIT,
 } from './config';
 import { checkDataQuality } from './quality';
+import { calibrateScale, effectiveUncertainty } from './personalize';
 import { availableDays, getReading } from './readings';
 import { persistenceCount, unhealthyZ, windowDays } from './trend';
 import type { MetricDefinition } from '../domain/metrics';
@@ -56,6 +57,8 @@ interface DayCore {
   /** SD used for zExpected (combined SD with a model, pre-flight SD without). */
   spread: number;
   earthCrossed: boolean;
+  /** z against the UNcalibrated research curve (scale 1); null without a model. */
+  zResearch: number | null;
 }
 
 interface WindowCore {
@@ -86,15 +89,29 @@ function dayCore(ctx: Ctx, day: number): DayCore | null {
   let zExpected = zPreflight;
   let expected: ExpectedValue | null = null;
   let spread = sd;
+  let zResearch: number | null = null;
   if (ctx.model && day > 0) {
-    const offset = ctx.model.offset(day);
-    const combinedSd = Math.sqrt(sd * sd + ctx.model.uncertainty ** 2);
-    expected = { offset, value: mean + offset, uncertainty: ctx.model.uncertainty, modelId: ctx.model.id };
+    const cal = calibrateScale(ctx.input, ctx.metricId, ctx.model, mean, sd, day);
+    const offset = cal.scale * ctx.model.offset(day);
+    // Model uncertainty (individual variation) shrinks as her own calibration evidence grows: once her data
+    // has shown her personal size, the extra width is no longer needed. This can only make BASELINE MORE
+    // sensitive. PROTOTYPE DESIGN ASSUMPTION — see research/09_PERSONAL_CALIBRATION_AUDIT.md.
+    const u = effectiveUncertainty(ctx.model, cal);
+    const combinedSd = Math.sqrt(sd * sd + u ** 2);
+    expected = {
+      offset,
+      value: mean + offset,
+      uncertainty: u,
+      modelId: ctx.model.id,
+      scale: cal.scale,
+      scaleDaysUsed: cal.daysUsed,
+    };
     zExpected = (r.value - expected.value) / combinedSd;
+    zResearch = (r.value - (mean + ctx.model.offset(day))) / combinedSd;
     spread = combinedSd;
   }
   const earthCrossed = ctx.ref ? crossesEarthReference(ctx.ref, r.value) : false;
-  return { value: r.value, zPreflight, zExpected, expected, spread, earthCrossed };
+  return { value: r.value, zPreflight, zExpected, expected, spread, earthCrossed, zResearch };
 }
 
 function windowCore(ctx: Ctx, day: number): WindowCore {
@@ -115,7 +132,9 @@ function windowCore(ctx: Ctx, day: number): WindowCore {
 /** The ACT rule without the cool-down (used for one level of lookback). */
 function meetsAct(ctx: Ctx, core: DayCore, win: WindowCore): boolean {
   const uz = unhealthyZ(core.zExpected, ctx.def.unhealthyDirection);
-  return (uz >= ACT_Z && win.persistence >= PERSIST_REQUIRED) || win.earthCrossings >= EARTH_CROSSINGS_FOR_ACT;
+  // Earth-reference crossings alone raise WATCH (never hidden) but do not escalate to ACT:
+  // the 38.0 °C line is an oral-thermometer value and our sensor estimates core temperature.
+  return uz >= ACT_Z && win.persistence >= PERSIST_REQUIRED;
 }
 
 function wasActOn(ctx: Ctx, day: number): boolean {
@@ -199,7 +218,7 @@ function assessWithCtx(ctx: Ctx, day: number): MetricAssessment {
     l3 = {
       layer: 'EXPECTED_ADAPTATION',
       outcome: expFlag ? 'FLAG' : 'PASS',
-      detail: `Expected in-flight normal for ${formatDay(day)}: ${fmt(core.expected.value, d)} ± ${formatValue(ctx.metricId, WATCH_Z * core.spread)} (${cites}; group-mean curve; design assumptions apply). Today is ${signed(core.zExpected)} SD from expected.`,
+      detail: `Expected in-flight normal for ${formatDay(day)}: ${fmt(core.expected.value, d)} ± ${formatValue(ctx.metricId, WATCH_Z * core.spread)}. Shape of the change: ${cites} (group mean). Size: ${core.expected.scaleDaysUsed > 0 ? `personalised from her own ${core.expected.scaleDaysUsed} earlier days in space — her change is ${core.expected.scale.toFixed(2)}× the research average` : 'research average (no in-flight data yet)'}. Today is ${signed(core.zExpected)} SD from expected.`,
       evidenceIds: [...model.sourceIds],
     };
   } else {
@@ -240,7 +259,8 @@ function assessWithCtx(ctx: Ctx, day: number): MetricAssessment {
   // Status
   const uz = unhealthyZ(core.zExpected, dir);
   const actByZ = uz >= ACT_Z && k >= PERSIST_REQUIRED;
-  const actByEarth = win.earthCrossings >= EARTH_CROSSINGS_FOR_ACT;
+  // Earth crossings never escalate to ACT on their own (see meetsAct); they raise WATCH below.
+  const actByEarth = false;
   let status: Status;
   let coolDown = false;
   if (actByZ || actByEarth) {
@@ -252,6 +272,28 @@ function assessWithCtx(ctx: Ctx, day: number): MetricAssessment {
     coolDown = true;
   } else {
     status = 'OK';
+  }
+
+  // "Can't tell" safeguard (research/09_PERSONAL_CALIBRATION_AUDIT.md). Personal calibration may make
+  // BASELINE more cautious, but may never by itself produce a reassuring OK:
+  //  (a) the reading would be flagged against the research curve, and is only "normal" because her
+  //      personal adaptation estimate is bigger than the research average; or
+  //  (b) her personal estimate has risen by ≥ CALIBRATION_RISE_LIMIT since it was first established —
+  //      late adaptation and a slow unexplained change look the same in temperature data.
+  let adaptationUncertain = false;
+  let uncertainText = '';
+  if (model && core.expected && phaseOf(day) === 'INFLIGHT') {
+    const explainedOnlyByCalibration =
+      core.expected.scale > 1 && core.zResearch !== null && unhealthyZ(core.zResearch, dir) >= WATCH_Z && uz < WATCH_Z;
+    const cons = calibrateScale(ctx.input, ctx.metricId, model, baseline.mean, baseline.sd, day).consistency;
+    const crept = cons !== null && cons.recent - cons.early >= CALIBRATION_RISE_LIMIT;
+    if (explainedOnlyByCalibration || crept) {
+      adaptationUncertain = true;
+      uncertainText = crept
+        ? `Her recent readings imply an adaptation of ${cons!.recent.toFixed(2)}× the research average, but her earlier in-flight readings implied ${cons!.early.toFixed(2)}×. The rise does not follow the research timing: it could be late adaptation, a sensor change or a slow unexplained change — temperature alone cannot tell them apart.`
+        : `This reading is only normal if her adaptation is bigger than the research average (her estimate: ${core.expected.scale.toFixed(2)}×). Against the research curve it would be unusual. Temperature alone cannot tell a bigger adaptation from an unexplained rise.`;
+      if (status === 'OK') status = 'WATCH';
+    }
   }
 
   // Confidence
@@ -269,25 +311,33 @@ function assessWithCtx(ctx: Ctx, day: number): MetricAssessment {
     confidence = stepDown(confidence);
     confidenceReasons.push('A day with no reading falls inside the recent window.');
   }
+  if (adaptationUncertain) {
+    confidence = 'LOW';
+    confidenceReasons.push("BASELINE can't tell normal adaptation from an unexplained change here.");
+  }
 
-  // Headline
+  // Headline. "Expected" only when a research-based space model applies; otherwise "usual" (her own history).
+  const rng = core.expected ? 'expected' : 'usual';
   let headline: string;
   if (status === 'OK') {
     headline =
       model && core.expected && preFlag
         ? `${def.label}: above your pre-flight normal, but within the expected in-flight range for ${formatDay(day)}.`
-        : `${def.label}: within your expected range.`;
+        : `${def.label}: within your ${rng} range.`;
   } else if (status === 'WATCH' && !coolDown && uz < WATCH_Z) {
-    headline = `${def.label}: within your expected range, but past the general Earth reference today.`;
+    headline = `${def.label}: within your ${rng} range, but past the general Earth reference today.`;
   } else if (status === 'WATCH' && !coolDown) {
     const expectedValue = core.expected ? core.expected.value : baseline.mean;
-    headline = `${def.label}: outside your expected range today (${fmt(core.value, d)} vs expected ${fmt(expectedValue, Math.max(d, 1))} ± ${formatValue(ctx.metricId, WATCH_Z * core.spread, Math.max(d, 1))}).`;
+    headline = `${def.label}: outside your ${rng} range today (${fmt(core.value, d)} vs ${rng} ${fmt(expectedValue, Math.max(d, 1))} ± ${formatValue(ctx.metricId, WATCH_Z * core.spread, Math.max(d, 1))}).`;
   } else if (status === 'WATCH') {
-    headline = `${def.label}: back inside your expected range, but recently ACT — keep checking.`;
+    headline = `${def.label}: back inside your ${rng} range, but recently ACT — keep checking.`;
   } else if (actByZ) {
-    headline = `${def.label}: outside your expected range on ${k} of the last ${n} available days.`;
+    headline = `${def.label}: outside your ${rng} range on ${k} of the last ${n} available days.`;
   } else {
     headline = `${def.label}: past the general Earth reference on ${win.earthCrossings} of the last ${n} available days.`;
+  }
+  if (adaptationUncertain && !actByZ && !(uz >= WATCH_Z)) {
+    headline = `${def.label}: can't tell — this may be normal space adaptation or a slow unexplained change.`;
   }
   const headlineMentionsEarth = (status === 'ACT' && !actByZ) || (status === 'WATCH' && !coolDown && uz < WATCH_Z);
   if (core.earthCrossed && !headlineMentionsEarth) headline += ' Also past the general Earth reference.';
@@ -303,6 +353,10 @@ function assessWithCtx(ctx: Ctx, day: number): MetricAssessment {
     if (l4.outcome === 'FLAG') reasons.push(l4.detail);
     if (l5.outcome === 'FLAG' || actByEarth) reasons.push(l5.detail);
     if (coolDown) reasons.push('Recently ACT — keep checking.');
+    if (adaptationUncertain) reasons.push(uncertainText);
+  }
+  if (adaptationUncertain && l3.outcome !== 'NOT_APPLICABLE') {
+    l3 = { ...l3, outcome: 'FLAG', detail: `${l3.detail} ${uncertainText}` };
   }
 
   return {
@@ -325,9 +379,13 @@ function assessWithCtx(ctx: Ctx, day: number): MetricAssessment {
       l5,
     ],
     headline,
-    nextStep: NEXT_STEP[status],
+    nextStep:
+      adaptationUncertain && status === 'WATCH'
+        ? "BASELINE can't tell if this is normal adaptation. Mention it to your crew medical officer at your next routine check."
+        : NEXT_STEP[status],
     reasons,
     confidenceReasons,
+    adaptationUncertain,
   };
 }
 

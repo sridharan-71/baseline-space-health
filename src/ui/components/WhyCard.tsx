@@ -1,33 +1,24 @@
-import type { LayerName, LayerOutcome, MetricAssessment } from '../../engine/index';
+import type { LayerOutcome, MetricAssessment } from '../../engine/index';
+import { LAYER_QUESTION, layerAnswer } from '../plain';
 import { EvidenceChip } from './EvidenceChip';
 
-const LAYER_LABEL: Record<LayerName, string> = {
-  DATA_QUALITY: 'Data quality',
-  PERSONAL_DEVIATION: 'Compared with your pre-flight normal',
-  EXPECTED_ADAPTATION: 'Expected space adaptation',
-  PERSISTENCE: 'Persistence',
-  EARTH_REFERENCE: 'Earth reference',
-};
-const OUTCOME: Record<LayerOutcome, { icon: string; word: string }> = {
-  PASS: { icon: '✓', word: 'PASS' },
-  FLAG: { icon: '!', word: 'FLAG' },
-  NOT_APPLICABLE: { icon: '–', word: 'N/A' },
-  FAIL: { icon: '✕', word: 'FAIL' },
-};
+const ICON: Record<LayerOutcome, string> = { PASS: '✓', FLAG: '!', NOT_APPLICABLE: '–', FAIL: '✕' };
 
 export function WhyCard({ assessment }: { assessment: MetricAssessment }) {
   return (
     <div className="why-card">
-      <h4>Why?</h4>
+      <h4>How BASELINE decided — 5 questions</h4>
       <ol className="why-card__layers">
         {assessment.layers.map((l) => (
           <li key={l.layer} className={`layer layer--${l.outcome.toLowerCase()}`}>
             <div className="layer__head">
               <span className="layer__icon" aria-hidden="true">
-                {OUTCOME[l.outcome].icon}
+                {ICON[l.outcome]}
               </span>
-              <strong>{LAYER_LABEL[l.layer]}</strong>
-              <span className="layer__outcome">{OUTCOME[l.outcome].word}</span>
+              <strong>{LAYER_QUESTION[l.layer]}</strong>
+              <span className="layer__outcome" data-outcome={l.outcome}>
+                {layerAnswer(l.layer, l.outcome)}
+              </span>
             </div>
             <p className="layer__detail">{l.detail}</p>
             {l.evidenceIds.length > 0 && (
@@ -40,7 +31,10 @@ export function WhyCard({ assessment }: { assessment: MetricAssessment }) {
           </li>
         ))}
       </ol>
-      <p className="fine-print">Rules are prototype design choices, not medically validated.</p>
+      <p className="fine-print">
+        “SD” (standard deviation) is the size of your normal day-to-day wobble. 2 SD or more away from your average is unusual.
+        These rules are prototype design choices, not medically validated.
+      </p>
     </div>
   );
 }

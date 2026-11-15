@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { formatDay, formatValue, type MetricId } from '../../engine/index';
+import { STATUS_PLAIN, friendlyDay } from '../plain';
+import { formatValue, type MetricId } from '../../engine/index';
 import { useDayAssessment, useLens, useMission, type Tab } from '../../state/MissionContext';
 
 interface Step {
@@ -7,82 +8,99 @@ interface Step {
   metricId: MetricId | null;
   tab: Tab;
   title: string;
+  scrollTo?: string;
 }
 
 const STEPS: Step[] = [
-  { day: 60, metricId: 'coreTemp', tab: 'measure', title: '“Is this space?” — FD60 core temperature' },
-  { day: 97, metricId: 'restingHR', tab: 'measure', title: '“…or is this me?” — FD97 resting heart rate' },
-  { day: 98, metricId: 'coreTemp', tab: 'today', title: 'Missing data — FD98' },
-  { day: 99, metricId: null, tab: 'note', title: 'The CMO note — FD99' },
+  { day: 99, metricId: null, tab: 'today', title: 'Meet Cmdr. Asha Rao — day 99 in space' },
+  { day: 60, metricId: 'coreTemp', tab: 'measure', title: 'Is this space? — temperature on day 60' },
+  { day: 99, metricId: 'coreTemp', tab: 'measure', title: 'Same number, different meaning', scrollTo: 'same-title' },
+  { day: 97, metricId: 'restingHR', tab: 'measure', title: '…or is this me? — heart rate on day 97' },
+  { day: 99, metricId: null, tab: 'note', title: 'Hand it to the medical officer' },
 ];
 
 function Caption({ step }: { step: number }) {
   const temp = useLens('coreTemp');
   const hr = useLens('restingHR');
   const d97 = useDayAssessment(97);
-  const d98 = useDayAssessment(98);
   const d99 = useDayAssessment(99);
   const hr97 = d97.metrics.find((m) => m.metricId === 'restingHR')!;
-  const t98 = d98.metrics.find((m) => m.metricId === 'coreTemp')!;
-  const t99 = d99.metrics.find((m) => m.metricId === 'coreTemp')!;
-  const conf = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }[t99.confidence];
+  const flagged99 = d99.metrics.filter((m) => m.status === 'ACT' || m.status === 'WATCH').length;
 
   if (step === 0)
     return (
       <p>
-        On day 60 her temperature is well above her pre-flight normal, so a pre-flight-only system would alarm. ISS research
-        found resting core temperature rises about 1 °C over roughly 75 days in flight. BASELINE expects that rise, so it says
-        OK — and the Why card shows why. Pre-flight-only would have flagged her on <strong>{temp.flagged.preflightOnly}</strong>{' '}
-        of {temp.daysEvaluated} in-flight days; BASELINE flagged <strong>{temp.flagged.baseline}</strong>.
+        A fictional astronaut, 99 days into a long mission. The top of Today answers “how is she doing?” in one line:{' '}
+        <strong>{STATUS_PLAIN[d99.overall]}</strong>, with {flagged99} of {d99.metrics.length} measures unusual. Below it,
+        “What needs attention?” says what changed, compared with what, for how long, and how sure BASELINE is.
       </p>
     );
   if (step === 1)
     return (
       <p>
-        The opposite failure. {hr97.value === null ? 'Her heart rate' : formatValue('restingHR', hr97.value)} is normal on Earth, so
-        the Earth lens flagged <strong>{hr.flagged.earth ?? 0}</strong> days. For her, it is outside her own normal on{' '}
-        <strong>
-          {hr97.persistence.flaggedOfLastAvailable} of the last {hr97.persistence.availableInWindow}
-        </strong>{' '}
-        days, alongside short sleep. BASELINE status: <strong>{hr97.status}</strong>.
+        On day 60 her temperature is well above her pre-launch normal. ISS research found resting core temperature rises
+        about 1 °C over ~75 days, and BASELINE expects that rise — so it says “Normal for you”. Her pre-launch normal alone
+        would have flagged <strong>{temp.flagged.preflightOnly}</strong> of {temp.daysEvaluated} days in space; BASELINE
+        flagged <strong>{temp.flagged.baseline}</strong>.
       </p>
     );
   if (step === 2)
     return (
       <p>
-        No reading is not “fine”. The temperature card says <strong>{t98.status}</strong> — “{t98.reasons[0]}” — and the next
-        day the confidence drops to <strong>{conf}</strong>.
+        The same 37.6 °C reading, judged by the live engine on day 4 and day 90, gets two different answers — because what
+        is normal for her moves during the mission. Only temperature has a research-based space model in BASELINE.
+      </p>
+    );
+  if (step === 3)
+    return (
+      <p>
+        The opposite failure. {hr97.value === null ? 'Her heart rate' : formatValue('restingHR', hr97.value)} is normal by
+        Earth limits (Earth flagged <strong>{hr.flagged.earth ?? 0}</strong> days). For her, it is outside her own range on{' '}
+        <strong>
+          {hr97.persistence.flaggedOfLastAvailable} of the last {hr97.persistence.availableInWindow}
+        </strong>{' '}
+        days. There is no space model for heart rate, so this uses her own history only.
       </p>
     );
   return (
     <p>
-      One tap gives a structured SBAR note for the crew medical officer: situation, pre-flight and expected values, the data
-      gap, and a request for review. It is a draft the astronaut edits. BASELINE never diagnoses.
+      One tap gives a structured SBAR note: situation, her normal and expected values, data gaps (her temperature reading
+      is missing on day 98), and a request for review — with the supporting readings shown. She edits it before sharing.
+      BASELINE never diagnoses.
     </p>
   );
 }
 
 export function DemoTour({ onClose }: { onClose: () => void }) {
-  const { jumpTo } = useMission();
+  const { jumpTo, setActiveTab } = useMission();
   const [i, setI] = useState(0);
   const go = (n: number) => {
     const s = STEPS[n]!;
     setI(n);
     jumpTo(s.day, s.metricId, s.tab);
+    setTimeout(() => {
+      if (s.scrollTo) document.getElementById(s.scrollTo)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      else window.scrollTo?.({ top: 0, behavior: 'smooth' });
+    }, 60);
   };
   const step = STEPS[i]!;
   return (
     <aside className="tour" aria-label="Guided demo" aria-live="polite">
       <div className="tour__head">
-        <strong>
+        <span className="tour__count">
           Guided demo · {i + 1}/{STEPS.length}
-        </strong>
-        <button type="button" className="btn btn--ghost" onClick={onClose} aria-label="Close guided demo">
+        </span>
+        <button type="button" className="btn btn--icon" onClick={onClose} aria-label="Close guided demo">
           ✕
         </button>
       </div>
+      <div className="tour__progress" aria-hidden="true">
+        {STEPS.map((_, n) => (
+          <span key={n} className={n <= i ? 'on' : ''} />
+        ))}
+      </div>
       <h3>{step.title}</h3>
-      <p className="muted">Showing {formatDay(step.day)}</p>
+      <p className="tour__where">Showing {friendlyDay(step.day).toLowerCase()}</p>
       <Caption step={i} />
       <div className="tour__nav">
         <button type="button" className="btn btn--ghost" disabled={i === 0} onClick={() => go(i - 1)}>
@@ -98,6 +116,19 @@ export function DemoTour({ onClose }: { onClose: () => void }) {
           </button>
         )}
       </div>
+      {i === STEPS.length - 1 && (
+        <button
+          type="button"
+          className="btn btn--text"
+          onClick={() => {
+            setActiveTab('evidence');
+            onClose();
+            setTimeout(() => document.getElementById('stress-test')?.scrollIntoView?.({ behavior: 'smooth' }), 60);
+          }}
+        >
+          Is this fair? See the stress test →
+        </button>
+      )}
     </aside>
   );
 }
