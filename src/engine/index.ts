@@ -9,7 +9,7 @@ export { ADAPTATION_MODELS } from '../evidence/adaptation';
 export type { AdaptationModel } from '../evidence/adaptation';
 export { EARTH_REFERENCES } from '../evidence/references';
 export type { EarthReference } from '../evidence/references';
-export { METRICS, METRIC_ORDER, SYMPTOM_LABELS } from '../domain/metrics';
+export { METRICS, METRIC_ORDER, SYMPTOM_LABELS, formatValue } from '../domain/metrics';
 export type { MetricDefinition } from '../domain/metrics';
 export { validateReading, validateSelfReport } from '../domain/validation';
 export * from '../domain/types';

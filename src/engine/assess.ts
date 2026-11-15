@@ -281,7 +281,7 @@ function assessWithCtx(ctx: Ctx, day: number): MetricAssessment {
     headline = `${def.label}: within your expected range, but past the general Earth reference today.`;
   } else if (status === 'WATCH' && !coolDown) {
     const expectedValue = core.expected ? core.expected.value : baseline.mean;
-    headline = `${def.label}: outside your expected range today (${fmt(core.value, d)} vs expected ${fmt(expectedValue, d)} ± ${formatValue(ctx.metricId, WATCH_Z * core.spread)}).`;
+    headline = `${def.label}: outside your expected range today (${fmt(core.value, d)} vs expected ${fmt(expectedValue, Math.max(d, 1))} ± ${formatValue(ctx.metricId, WATCH_Z * core.spread, Math.max(d, 1))}).`;
   } else if (status === 'WATCH') {
     headline = `${def.label}: back inside your expected range, but recently ACT — keep checking.`;
   } else if (actByZ) {

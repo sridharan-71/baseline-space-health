@@ -40,7 +40,7 @@ describe('assessMetric — status paths', () => {
     const a = assessMetric(hr({ 1: 60, 2: 60, 3: 65 }), 'restingHR', 3);
     expect(a.status).toBe('WATCH');
     expect(a.persistence.flaggedOfLastAvailable).toBe(1);
-    expect(a.headline).toMatch(/outside your expected range today \(65 vs expected 60 ± 4 bpm\)/);
+    expect(a.headline).toMatch(/outside your expected range today \(65 vs expected 60\.0 ± 4\.1 bpm\)/);
     expect(a.nextStep).toBe('Re-check within 24 h. Note how you feel.');
   });
   it('ACT with persistence', () => {
