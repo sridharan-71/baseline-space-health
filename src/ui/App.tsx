@@ -44,7 +44,7 @@ function Shell() {
             <svg className="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
               <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.35" />
               <path d="M4 19 C 10 19, 12 11, 16 11 S 22 19, 28 19" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-              <circle cx="16" cy="11" r="2.4" fill="#7fd1a8" />
+              <circle cx="16" cy="11" r="2.4" fill="#3b5bdb" />
             </svg>
             <div>
               <h1>BASELINE</h1>

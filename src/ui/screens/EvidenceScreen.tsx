@@ -4,11 +4,12 @@ import { StressTestTable } from '../components/StressTestTable';
 import { LAYER_QUESTION } from '../plain';
 
 const BASIS: { part: string; basis: 'Research' | 'Clinical reference' | 'Design assumption'; note: string }[] = [
-  { part: 'Core temperature rises about 1 °C over ~75 days in flight', basis: 'Research', note: 'Stahn et al. 2017, 11 ISS astronauts. Group average, not a personal prediction.' },
+  { part: 'Shape of the core temperature rise (~1 °C over ~75 days)', basis: 'Research', note: 'Stahn et al. 2017, 11 ISS astronauts. Group average, not a personal prediction.' },
   { part: 'Sizing that rise to each astronaut from her own data', basis: 'Design assumption', note: 'Our method. Tested only on simulated astronauts (see stress test).' },
-  { part: `“Unusual” = ${WATCH_Z} × her usual wobble; “tell your medical officer” = ${ACT_Z} × on 2 of the last 3 days`, basis: 'Design assumption', note: 'Prototype thresholds. Not medically validated.' },
+  { part: `${WATCH_Z} SD and ${ACT_Z} SD thresholds`, basis: 'Design assumption', note: 'Prototype thresholds. Not medically validated.' },
   { part: 'Heart rate, sleep and mood: compared with her own pre-launch range', basis: 'Design assumption', note: 'No research-based space model is implemented for these.' },
   { part: 'Earth medical limits (e.g. 38 °C)', basis: 'Clinical reference', note: 'Shown for context. Never hidden, but on their own they do not escalate to “Tell your medical officer”.' },
+  { part: 'Persistence: unusual on 2 of the last 3 days with a reading', basis: 'Design assumption', note: 'Our rule for “Tell your medical officer”.' },
 ];
 
 export function EvidenceScreen() {
@@ -26,60 +27,60 @@ export function EvidenceScreen() {
         </div>
       </header>
 
-      <div className="evidence-top">
-        <section className="panel" aria-labelledby="how-title">
-          <h3 id="how-title">How BASELINE reads one measurement</h3>
-          <ol className="steps">
-            {Object.values(LAYER_QUESTION).map((q, i) => (
-              <li key={q}>
-                <span className="steps__n">{i + 1}</span> {q}
-              </li>
-            ))}
-          </ol>
-          <p className="fine-print">Each measure is checked on its own. BASELINE does not combine measures into a risk score.</p>
-        </section>
+      <section className="card" aria-labelledby="how-title">
+        <p className="eyebrow">1</p>
+        <h3 id="how-title">How BASELINE works</h3>
+        <ol className="flow">
+          {Object.values(LAYER_QUESTION).map((q, i) => (
+            <li key={q} className={i === 2 ? 'flow__step flow__step--key' : 'flow__step'}>
+              <span className="flow__n">{i + 1}</span>
+              <span>{q}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="fine-print">Step 3 uses a research model for core temperature only. Each measure is checked on its own — no combined risk score.</p>
+      </section>
 
-        <section className="panel" aria-labelledby="basis-title">
-          <h3 id="basis-title">Research or assumption?</h3>
-          <ul className="basis-list">
-            {BASIS.map((b) => (
-              <li key={b.part}>
-                <span className={`kind-tag kind-tag--${b.basis.toLowerCase().replace(' ', '_')}`}>{b.basis}</span>
-                <div>
-                  <strong>{b.part}</strong>
-                  <p className="muted small">{b.note}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
+      <section className="card" aria-labelledby="basis-title">
+        <p className="eyebrow">2</p>
+        <h3 id="basis-title">Research vs our assumptions</h3>
+        <div className="basis-cols">
+          {(['Research', 'Clinical reference', 'Design assumption'] as const).map((k) => (
+            <div key={k} className={`basis-col basis-col--${k.toLowerCase().replace(' ', '_')}`}>
+              <p className="basis-col__title">{k === 'Research' ? 'Research-based' : k === 'Clinical reference' ? 'Clinical reference' : 'Our design assumptions'}</p>
+              <ul>
+                {BASIS.filter((b) => b.basis === k).map((b) => (
+                  <li key={b.part}>
+                    <strong>{b.part}</strong>
+                    <span>{b.note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      <section id="stress-test" className="panel" aria-labelledby="stress-title">
+      <section id="stress-test" className="card" aria-labelledby="stress-title">
+        <p className="eyebrow">3</p>
         <h3 id="stress-title">Stress test: does the method work for a different astronaut?</h3>
         <StressTestTable />
       </section>
 
-      <section className="panel" aria-labelledby="limits-title">
-        <h3 id="limits-title">Limitations</h3>
+      <section className="card" aria-labelledby="limits-title">
+        <p className="eyebrow">4</p>
+        <h3 id="limits-title">Known limitations</h3>
         <ul className="rules">
-          <li>All data is simulated. BASELINE has not been tested on real astronaut data and is not clinically validated.</li>
-          <li>Only core temperature has a research-based space model, built from a small group (11 astronauts).</li>
-          <li>A slow, small unexplained drift in temperature can look the same as normal adaptation. When BASELINE can't tell, it says so and never shows “Normal for you”.</li>
-          <li>Astronauts who adapt more strongly or faster than average get more “keep an eye on it” results early in flight (see stress test).</li>
+          <li>All data is simulated. Not tested on real astronauts; not clinically validated.</li>
+          <li>Only core temperature has a research-based space model, from a small study (11 astronauts).</li>
+          <li>A slow, small, early temperature drift can look like normal adaptation. When BASELINE can't tell, it says so and never shows “Normal for you”.</li>
+          <li>Astronauts who adapt more strongly or faster than average get extra alerts early in flight.</li>
           <li>Thresholds are prototype choices, not medical standards.</li>
-        </ul>
-        <h4>What BASELINE never does</h4>
-        <ul className="rules">
-          <li>Diagnose, or name a condition.</li>
-          <li>Suggest medicines or doses.</li>
-          <li>Replace your crew medical officer — you never need the app's permission to contact them.</li>
-          <li>Hide an Earth-reference crossing. The adaptation lens can explain a change; it never hides a line.</li>
         </ul>
       </section>
 
-      <details className="panel disclosure">
-        <summary>Research references ({Object.keys(EVIDENCE).length})</summary>
+      <details className="card disclosure">
+        <summary>5 · Sources and references ({Object.keys(EVIDENCE).length})</summary>
         <div className="evidence-list">
           {Object.values(EVIDENCE).map((e) => (
             <article key={e.id} id={`evidence-${e.id}`} className="evidence-card">
@@ -109,8 +110,8 @@ export function EvidenceScreen() {
         </div>
       </details>
 
-      <details className="panel disclosure">
-        <summary>Model assumptions</summary>
+      <details className="card disclosure">
+        <summary>Model details and prototype rules</summary>
         {ADAPTATION_MODELS.map((m) => (
           <article key={m.id} className="evidence-card">
             <h4>{METRICS[m.metricId].label}</h4>
@@ -139,7 +140,7 @@ export function EvidenceScreen() {
         </ul>
       </details>
 
-      <details className="panel disclosure">
+      <details className="card disclosure">
         <summary>Data sources and words used in this app</summary>
         <p>
           The astronaut, Cmdr. Asha Rao, is fictional. Her 30 days before launch and 99 days in flight are generated by a
@@ -164,7 +165,18 @@ export function EvidenceScreen() {
         </dl>
       </details>
 
-      <section className="panel" aria-labelledby="entries-title">
+      <section className="card" aria-labelledby="never-title">
+        <p className="eyebrow">6</p>
+        <h3 id="never-title">What BASELINE never does</h3>
+        <ul className="never">
+          <li>Diagnose, or name a condition</li>
+          <li>Suggest medicines or doses</li>
+          <li>Replace the crew medical officer — you never need the app's permission to contact them</li>
+          <li>Hide an Earth-limit crossing</li>
+        </ul>
+      </section>
+
+      <section className="card" aria-labelledby="entries-title">
         <h3 id="entries-title">Your entries</h3>
         <p>
           {userEntryCount > 0

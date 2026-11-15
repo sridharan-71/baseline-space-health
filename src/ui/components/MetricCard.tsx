@@ -1,98 +1,133 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { METRICS, formatValue, type MetricAssessment } from '../../engine/index';
-import { useMission } from '../../state/MissionContext';
-import { SHORT_LABEL, changeText, referenceFor } from '../plain';
+import { useLens, useMission } from '../../state/MissionContext';
+import { SHORT_LABEL, changeText, referenceFor, friendlyDay } from '../plain';
 import { ConfidenceTag } from './ConfidenceTag';
+import { MetricIcon } from './Icons';
+import { Sparkline } from './Sparkline';
 import { StatusBadge } from './StatusBadge';
 import { WhyCard } from './WhyCard';
 
-/** One measure on one day: reading, what it is compared with, the change, the status and why. */
+/** Reasons in a dialog, so the card itself stays short. */
+function WhyDialog({ assessment, onClose }: { assessment: MetricAssessment; onClose: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const titleId = `why-${assessment.metricId}`;
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()}>
+        <header className="dialog__head">
+          <div>
+            <p className="eyebrow">{friendlyDay(assessment.missionDay)}</p>
+            <h3 id={titleId}>Why: {SHORT_LABEL[assessment.metricId]}</h3>
+          </div>
+          <button ref={closeRef} type="button" className="btn btn--icon" onClick={onClose} aria-label="Close reasons">
+            ✕
+          </button>
+        </header>
+        <p className="dialog__headline">{assessment.headline}</p>
+        <p className="next">
+          <span className="next__label">Next step</span> {assessment.nextStep}
+        </p>
+        <ConfidenceTag assessment={assessment} />
+        <WhyCard assessment={assessment} />
+      </div>
+    </div>
+  );
+}
+
+/** One measure on one day. Compact on Today; full (with reasons open) on Over time. */
 export function MetricCard({
   assessment,
   showChartButton = true,
   defaultOpen = false,
-  compact = false,
 }: {
   assessment: MetricAssessment;
   showChartButton?: boolean;
   defaultOpen?: boolean;
-  /** Today's overview: the headline and next step already appear under "What needs attention?". */
-  compact?: boolean;
 }) {
-  const flaggedElsewhere = compact && (assessment.status === 'WATCH' || assessment.status === 'ACT');
   const { jumpTo } = useMission();
-  const [open, setOpen] = useState(defaultOpen);
+  const lens = useLens(assessment.metricId);
+  const [open, setOpen] = useState(false);
+  const full = defaultOpen;
   const def = METRICS[assessment.metricId];
   const id = assessment.metricId;
   const ref = referenceFor(assessment);
   const change = changeText(assessment);
-  const status = assessment.status.toLowerCase();
-  const valueParts = assessment.value === null ? null : formatValue(id, assessment.value);
+  const st = assessment.status.toLowerCase();
 
   return (
-    <article className={`metric-card metric-card--${status}`} aria-label={`${def.label} card`} data-testid={`card-${id}`}>
+    <article className={`metric-card metric-card--${st}${full ? ' metric-card--full' : ''}`} aria-label={`${def.label} card`} data-testid={`card-${id}`}>
       <header className="metric-card__head">
+        <MetricIcon id={id} size={36} />
         <h3>{SHORT_LABEL[id]}</h3>
         <StatusBadge status={assessment.status} />
       </header>
 
-      <div className="metric-card__reading">
-        {valueParts === null ? (
-          <p className="metric-card__value metric-card__value--none">No reading</p>
-        ) : (
-          <p className="metric-card__value">{valueParts}</p>
-        )}
-        {change && (
-          <p className={`metric-card__change metric-card__change--${status}`}>
-            <span aria-hidden="true">{change.arrow}</span> {change.text}
-          </p>
-        )}
-      </div>
+      {assessment.value === null ? (
+        <p className="metric-card__value metric-card__value--none">No reading</p>
+      ) : (
+        <p className="metric-card__value">{formatValue(id, assessment.value)}</p>
+      )}
 
-      <dl className="metric-card__ref">
-        <dt>Compared with</dt>
-        <dd>
-          {ref ? (
-            <>
-              <strong>{ref.label}: {formatValue(id, ref.value)}</strong>
-              <span className={`basis basis--${ref.kind}`}>
-                {ref.kind === 'space-model' ? 'Research space model + her own data' : 'Her own history only · no space model'}
-              </span>
-            </>
-          ) : (
-            <span className="muted">Not enough readings before launch to make a reliable comparison.</span>
-          )}
-        </dd>
-      </dl>
+      {change ? (
+        <p className={`metric-card__change metric-card__change--${st}`}>
+          <span aria-hidden="true">{change.arrow}</span> {change.text.replace(' for you today', '').replace(' your usual before launch', ' usual')}
+        </p>
+      ) : (
+        <p className="metric-card__change">Nothing to compare — shown as “No data”, never as normal.</p>
+      )}
+
+      <p className="metric-card__ref">
+        {ref ? (
+          <>
+            {ref.kind === 'space-model' ? 'Expected today' : 'Usual before launch'}: <strong>{formatValue(id, ref.value)}</strong>
+            <span className={`basis basis--${ref.kind}`}>{ref.kind === 'space-model' ? 'Space model' : 'Own history'}</span>
+          </>
+        ) : (
+          <span className="muted">Not enough readings before launch.</span>
+        )}
+      </p>
+
+      {!full && <Sparkline lens={lens} day={assessment.missionDay} metricId={id} />}
 
       {assessment.adaptationUncertain && (
         <p className="cant-tell" role="note">
-          <strong>Can't tell:</strong> normal space adaptation and a slow unexplained change look the same in this
-          temperature data. BASELINE won't call it normal.
+          <strong>Can't tell</strong> normal adaptation from a slow change here — BASELINE won't call it normal.
         </p>
       )}
 
-      {!flaggedElsewhere && <p className="metric-card__headline">{assessment.headline}</p>}
-      {!flaggedElsewhere && (assessment.status !== 'OK' || defaultOpen) && (
-        <p className="metric-card__next">
-          <span className="metric-card__next-label">Next step</span> {assessment.nextStep}
-        </p>
+      {full && (
+        <>
+          <p className="metric-card__headline">{assessment.headline}</p>
+          <p className="next">
+            <span className="next__label">Next step</span> {assessment.nextStep}
+          </p>
+        </>
       )}
 
       <footer className="metric-card__foot">
-        <ConfidenceTag assessment={assessment} inline={!defaultOpen} />
+        <ConfidenceTag assessment={assessment} inline={!full} />
         <div className="metric-card__actions">
-          <button type="button" className="btn btn--quiet" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            {open ? 'Hide reasons' : 'Why this result?'}
-          </button>
+          {!full && (
+            <button type="button" className="btn btn--quiet" aria-expanded={open} onClick={() => setOpen(true)}>
+              Why this result?
+            </button>
+          )}
           {showChartButton && (
-            <button type="button" className="btn btn--quiet" onClick={() => jumpTo(assessment.missionDay, id, 'measure')}>
-              See over time
+            <button type="button" className="btn btn--quiet" aria-label="See over time" onClick={() => jumpTo(assessment.missionDay, id, 'measure')}>
+              Trend →
             </button>
           )}
         </div>
       </footer>
-      {open && <WhyCard assessment={assessment} />}
+      {full && <WhyCard assessment={assessment} />}
+      {open && <WhyDialog assessment={assessment} onClose={() => setOpen(false)} />}
     </article>
   );
 }

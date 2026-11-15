@@ -62,9 +62,16 @@ export function CheckInForm({ day }: { day: number }) {
 
   if (!open) {
     return (
-      <button type="button" className="btn btn--primary" onClick={() => setOpen(true)}>
-        Enter readings for {label}
-      </button>
+      <section className="card checkin-closed" aria-label="Daily check-in">
+        <header className="card__head">
+          <h2>Daily check-in</h2>
+        </header>
+        <p className="muted">Add or correct a reading, mood or symptoms. Saved only in this browser.</p>
+        {saved && <p className="success" role="status">{saved}</p>}
+        <button type="button" className="btn btn--primary" onClick={() => setOpen(true)}>
+          Enter readings for {label}
+        </button>
+      </section>
     );
   }
 

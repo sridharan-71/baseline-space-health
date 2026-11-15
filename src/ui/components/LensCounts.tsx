@@ -1,74 +1,105 @@
-import type { LensComparison } from '../../engine/index';
+import { useMemo } from 'react';
+import { ROLLING_WINDOW_DAYS, rollingFlags, type LensComparison } from '../../engine/index';
 import { useMission } from '../../state/MissionContext';
-import { friendlyDay } from '../plain';
+import { SHORT_LABEL } from '../plain';
+
+interface Method {
+  id: string;
+  name: string;
+  count: number | null;
+  none?: string;
+  how: string;
+  means: string;
+  ours?: boolean;
+}
 
 /**
- * The same readings judged three ways. Numbers come straight from the engine's
- * compareLenses(); the only arithmetic here is a difference for the takeaway sentence.
+ * The same readings judged four ways. Counts come from the engine (compareLenses, rollingFlags);
+ * the only arithmetic here is bar widths.
  */
 export function LensCounts({ lens, currentDay }: { lens: LensComparison; currentDay: number }) {
+  const { input, setActiveTab } = useMission();
   const { earth, preflightOnly, baseline } = lens.flagged;
-  const extra = preflightOnly - baseline;
-  const { setActiveTab } = useMission();
   const hasModel = lens.perDay.some((d) => d.expectedLow !== null);
+  const isTemp = lens.metricId === 'coreTemp';
+  const rolling = useMemo(() => (isTemp ? rollingFlags(input, currentDay).size : null), [input, currentDay, isTemp]);
+  const total = lens.daysEvaluated;
+
+  const methods: Method[] = [
+    {
+      id: 'earth', name: 'Earth limit only', count: earth, none: 'No Earth reference for this measure',
+      how: 'A general limit for everyone on Earth.',
+      means: 'Misses changes that are unusual for her but stay below the general limit.',
+    },
+    {
+      id: 'preflight', name: 'Pre-launch normal only', count: preflightOnly,
+      how: 'Any change from her pre-launch range.',
+      means: hasModel ? 'Treats the expected space rise as a problem, so it flags many normal days.' : 'For this measure it is close to what BASELINE does, minus the persistence check.',
+    },
+    {
+      id: 'rolling', name: `Last ${ROLLING_WINDOW_DAYS} days only`, count: rolling, none: 'Calculated for temperature only',
+      how: `Compares each day with her previous ${ROLLING_WINDOW_DAYS} days.`,
+      means: 'Keeps up with change, but also slowly absorbs a slow drift (see the stress test).',
+    },
+    {
+      id: 'baseline', name: 'BASELINE', count: baseline, ours: true,
+      how: hasModel ? 'Her history + the expected space change, sized to her data.' : 'Her own history + a check that it lasts. No space model.',
+      means: hasModel ? 'Allows for the expected rise before calling a reading unusual.' : 'Relies on her own history and persistence.',
+    },
+  ];
+  const max = Math.max(1, ...methods.map((m) => m.count ?? 0));
+
   return (
-    <div className="lens-counts">
-      <h3 className="lens-counts__title">Same readings, three ways of judging them</h3>
-      <p className="muted small">
-        Number of days each method would have raised an alert, out of {lens.daysEvaluated} days in space with a reading (up
-        to {friendlyDay(currentDay).toLowerCase()}).
-      </p>
-      <div className="lens-tiles">
-        <div className="lens-tile" data-testid="lens-earth">
-          <span className="lens-tile__name">Earth medical limit only</span>
-          <span className="lens-tile__how">Alerts only past a general limit used for everyone on Earth.</span>
-          {earth === null ? (
-            <span className="lens-tile__none">No Earth reference for this measure</span>
-          ) : (
-            <span className="lens-tile__num">
-              <strong>{earth}</strong> days alerted
-            </span>
-          )}
+    <div className="compare">
+      <header className="compare__head">
+        <div>
+          <h3 className="compare__title">Same readings, four ways of judging them</h3>
+          <p className="muted small">
+            Days each method would raise an alert, out of {total} days in space with a {SHORT_LABEL[lens.metricId].toLowerCase()} reading.
+          </p>
         </div>
-        <div className="lens-tile" data-testid="lens-preflight">
-          <span className="lens-tile__name">Her normal before launch only</span>
-          <span className="lens-tile__how">Alerts on any change from before launch, including normal space changes.</span>
-          <span className="lens-tile__num">
-            <strong>{preflightOnly}</strong> days alerted
-          </span>
-        </div>
-        <div className="lens-tile lens-tile--baseline" data-testid="lens-baseline">
-          <span className="lens-tile__name">BASELINE</span>
-          <span className="lens-tile__how">
-            {hasModel
-              ? 'Her normal before launch + the change research expects in space, sized to her own data.'
-              : 'Her normal before launch + a check that the change lasts. No space model for this measure.'}
-          </span>
-          <span className="lens-tile__num">
-            <strong>{baseline}</strong> days alerted
-          </span>
-        </div>
+      </header>
+      <div className="compare__grid">
+        {methods.map((m) => (
+          <div key={m.id} className={`method${m.ours ? ' method--ours' : ''}`} data-testid={`lens-${m.id}`}>
+            <p className="method__name">{m.name}</p>
+            {m.count === null ? (
+              <p className="method__none">{m.none}</p>
+            ) : (
+              <>
+                <p className="method__num">
+                  <strong>{m.count}</strong> <span>days flagged</span>
+                </p>
+                <div className="bar" aria-hidden="true">
+                  <span style={{ width: `${(m.count / max) * 100}%` }} />
+                </div>
+              </>
+            )}
+            <p className="method__how">{m.how}</p>
+            <p className="method__means">{m.means}</p>
+          </div>
+        ))}
       </div>
-      <p className="lens-counts__line">
-        {extra > 0 && `Using only her pre-launch normal would have raised ${extra} more alerts than BASELINE. `}
-        {earth === 0 && baseline > 0 && `Earth limits missed all ${baseline} days that BASELINE flagged. `}
-        {hasModel
-          ? 'BASELINE allows for the expected space change before deciding a reading is unusual.'
-          : 'For this measure BASELINE has no space model, so it relies on her own history and on persistence.'}
-      </p>
-      <p className="lens-counts__fair small">
-        This simulated astronaut follows the research average exactly, which flatters BASELINE.{' '}
-        <button
-          type="button"
-          className="linklike"
-          onClick={() => {
-            setActiveTab('evidence');
-            setTimeout(() => document.getElementById('stress-test')?.scrollIntoView?.({ behavior: 'smooth' }), 50);
-          }}
-        >
-          See the stress test with astronauts who adapt differently →
-        </button>
-      </p>
+      <div className="takeaway">
+        <p>
+          <strong>What does this tell us?</strong> The same data gives very different answers depending on what you compare
+          with. Fewer alerts is not automatically better — the question is whether the alerts land on real problems.
+        </p>
+        <p className="takeaway__warn">
+          Simulated data. This astronaut was built to follow the research average exactly, which flatters BASELINE. These
+          counts are not a validated false-alarm rate.{' '}
+          <button
+            type="button"
+            className="linklike"
+            onClick={() => {
+              setActiveTab('evidence');
+              setTimeout(() => document.getElementById('stress-test')?.scrollIntoView?.({ behavior: 'smooth' }), 50);
+            }}
+          >
+            See the stress test →
+          </button>
+        </p>
+      </div>
     </div>
   );
 }

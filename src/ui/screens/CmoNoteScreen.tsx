@@ -6,7 +6,7 @@ import { DayStepper } from '../components/DayStepper';
 import { CONFIDENCE_WORD, SHORT_LABEL, friendlyDay, referenceFor } from '../plain';
 
 export function CmoNoteScreen() {
-  const { selectedDay } = useMission();
+  const { selectedDay, input } = useMission();
   const day = useDayAssessment();
   const draft = useCmoNote();
   const [text, setText] = useState(draft);
@@ -73,6 +73,13 @@ export function CmoNoteScreen() {
 
       <div className="note-layout">
         <div className="sbar" aria-label="Note preview">
+          <header className="sbar__doc">
+            <div>
+              <p className="eyebrow">Handoff note · SBAR · draft</p>
+              <p className="sbar__route">To: Crew medical officer · From: {input.astronaut.displayName} · {formatDay(selectedDay)}</p>
+            </div>
+            <span className="pill pill--sim">SIMULATED</span>
+          </header>
           {SBAR.map((k) => (
             <article key={k.key} className="sbar__section">
               <span className="sbar__letter" aria-hidden="true">{k.key}</span>
@@ -90,7 +97,7 @@ export function CmoNoteScreen() {
                 )}
                 {k.key === 'A' && flagged.length > 0 && (
                   <table className="support">
-                    <caption>Supporting readings</caption>
+                    <caption>Supporting readings · from the app, not a clinical judgement</caption>
                     <thead>
                       <tr><th scope="col">Measure</th><th scope="col">{formatDay(selectedDay)}</th><th scope="col">Compared with</th><th scope="col">Unusual days</th><th scope="col">How sure</th></tr>
                     </thead>

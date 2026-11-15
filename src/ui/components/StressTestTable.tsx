@@ -1,5 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ROLLING_WINDOW_DAYS, runStressTest, type MethodResult, type StressRow } from '../../engine/index';
+
+const METHODS: { key: 'earth' | 'preflightOnly' | 'rolling' | 'baseline'; name: string }[] = [
+  { key: 'earth', name: 'Earth limit only' },
+  { key: 'preflightOnly', name: 'Pre-launch normal only' },
+  { key: 'rolling', name: `Last ${ROLLING_WINDOW_DAYS} days only` },
+  { key: 'baseline', name: 'BASELINE' },
+];
 
 function Cell({ r, total, best }: { r: MethodResult; total: number; best?: boolean }) {
   const caught = r.episodeCaught;
@@ -25,61 +32,134 @@ function Cell({ r, total, best }: { r: MethodResult; total: number; best?: boole
   );
 }
 
+function MethodCard({ name, r, total, ours }: { name: string; r: MethodResult; total: number; ours: boolean }) {
+  const caught = r.episodeCaught;
+  return (
+    <div className={`st-method${ours ? ' st-method--ours' : ''}`}>
+      <p className="st-method__name">{name}</p>
+      <div className="st-method__row">
+        <span className={`st-num ${r.falseAlerts > 0 ? 'st-num--bad' : 'st-num--good'}`}>{r.falseAlerts}</span>
+        <span className="st-method__label">false alerts</span>
+      </div>
+      <div className="st-method__row">
+        {caught === null ? (
+          <span className="st-method__label">No problem to catch</span>
+        ) : (
+          <>
+            <span className={`st-num ${caught < total ? 'st-num--bad' : 'st-num--good'}`}>
+              {caught}/{total}
+            </span>
+            <span className="st-method__label">problem days caught</span>
+          </>
+        )}
+      </div>
+      {r.falseMedicalAlerts !== null && (
+        <div className="st-method__row">
+          <span className={`st-num ${r.falseMedicalAlerts > 0 ? 'st-num--bad' : 'st-num--good'}`}>{r.falseMedicalAlerts}</span>
+          <span className="st-method__label">false alerts that reached “Tell your medical officer”</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Live results of the real engine on hypothetical astronauts. Nothing here is hard-coded. */
 export function StressTestTable() {
   const rows: StressRow[] = useMemo(() => runStressTest(), []);
+  const [sel, setSel] = useState(rows[0]!.scenario.id);
+  const row = rows.find((r) => r.scenario.id === sel)!;
+  const weak = (r: StressRow) => r.baseline.falseAlerts > 0 || (r.baseline.episodeCaught !== null && r.baseline.episodeCaught < r.problemDaysWithData);
+
   return (
     <div className="stress">
-      <p>
-        The main demo astronaut was simulated to follow the research average exactly, so a method built on that average is
-        bound to look good on her. That's not a fair test. Here the <strong>same engine</strong> runs on hypothetical
-        astronauts who adapt differently (all SIMULATED). Real individual differences are not published in a form we can
-        use, so these are “what if” cases, not research findings.
+      <p className="lead">
+        The demo astronaut follows the research average exactly, so BASELINE is bound to look good on her. Here the{' '}
+        <strong>same engine</strong> runs on 8 hypothetical astronauts who adapt differently. All simulated — “what if”
+        cases, not research findings.
       </p>
-      <div className="stress__scroll">
-        <table className="stress__table">
-          <thead>
-            <tr>
-              <th scope="col">Hypothetical astronaut (temperature)</th>
-              <th scope="col">Earth limit only</th>
-              <th scope="col">Pre-launch normal only</th>
-              <th scope="col">Last {ROLLING_WINDOW_DAYS} days only</th>
-              <th scope="col">BASELINE</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.scenario.id}>
-                <th scope="row">
-                  <strong>{row.scenario.label}</strong>
-                  <br />
-                  <span className="muted small">{row.scenario.description}</span>
-                </th>
-                <Cell r={row.earth} total={row.problemDaysWithData} />
-                <Cell r={row.preflightOnly} total={row.problemDaysWithData} />
-                <Cell r={row.rolling} total={row.problemDaysWithData} />
-                <Cell r={row.baseline} total={row.problemDaysWithData} best />
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <dl className="st-key">
+        <div><dt>False alert</dt><dd>an alert on a day with no problem</dd></div>
+        <div><dt>Caught</dt><dd>planted problem days that were flagged</dd></div>
+      </dl>
+
+      <div className="st-scenarios" role="group" aria-label="Choose a hypothetical astronaut">
+        {rows.map((r) => (
+          <button
+            key={r.scenario.id}
+            type="button"
+            className={`st-chip${sel === r.scenario.id ? ' st-chip--on' : ''}`}
+            aria-pressed={sel === r.scenario.id}
+            onClick={() => setSel(r.scenario.id)}
+          >
+            {r.scenario.label}
+            {weak(r) && <span className="st-chip__weak">weak spot</span>}
+          </button>
+        ))}
       </div>
-      <p className="small">
-        <strong>How to read it:</strong> “false” = alerts on days with no problem. “caught” = problem days flagged.
-        “told doctor” = false alerts that reached “Tell your medical officer”.
-      </p>
-      <p className="small">
-        <strong>What it shows honestly:</strong> On a slow drift, a rolling “last {ROLLING_WINDOW_DAYS} days” baseline
-        quietly adapts and misses it. The Earth limit only catches drifts that happen to cross 38 °C — it misses the
-        non-adapter's drift completely. BASELINE catches it on its own data, mostly as “Keep an eye on it — can't tell”,
-        because temperature alone cannot prove whether a slow rise is late adaptation or something else.
-        BASELINE's weak spots: astronauts who adapt much faster or later than the research curve get extra alerts, and a
-        drift that starts in the first ~6 weeks can look exactly like normal adaptation.
-      </p>
-      <p className="small muted">
-        This table is one simulated mission per row (seed 2026). Results over 20 random seeds and 36 harder
-        “adversarial” cases are in research/10_ADVERSARIAL_STRESS_TEST_RESULTS.md. None of this is clinical
-        performance.
+
+      <div className="st-detail">
+        <p className="st-detail__title">{row.scenario.label}</p>
+        <p className="muted">{row.scenario.description}</p>
+        <div className="st-methods">
+          {METHODS.map((m) => (
+            <MethodCard key={m.key} name={m.name} r={row[m.key]} total={row.problemDaysWithData} ours={m.key === 'baseline'} />
+          ))}
+        </div>
+      </div>
+
+      <div className="st-callouts">
+        <div className="st-callout st-callout--good">
+          <p className="st-callout__title">Flaw found and fixed</p>
+          <p>
+            Over 20 random simulated runs, the first version missed a slow drift in <strong>15 of 20</strong>. After adding
+            the “can't tell” safeguard: <strong>0 of 20</strong> missed.
+          </p>
+        </div>
+        <div className="st-callout st-callout--bad">
+          <p className="st-callout__title">Weak spots we keep visible</p>
+          <ul>
+            {rows.filter(weak).map((r) => (
+              <li key={r.scenario.id}>
+                {r.scenario.label}: {r.baseline.falseAlerts} false alerts
+                {r.baseline.falseMedicalAlerts ? `, ${r.baseline.falseMedicalAlerts} reached “Tell your medical officer”` : ''}
+              </li>
+            ))}
+            <li>A slow drift that starts in the first ~6 weeks can look exactly like normal adaptation.</li>
+          </ul>
+        </div>
+      </div>
+
+      <details className="disclosure disclosure--inline">
+        <summary>All scenarios as one table</summary>
+        <div className="stress__scroll">
+          <table className="stress__table">
+            <thead>
+              <tr>
+                <th scope="col">Hypothetical astronaut (temperature)</th>
+                {METHODS.map((m) => <th key={m.key} scope="col">{m.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.scenario.id}>
+                  <th scope="row">
+                    <strong>{r.scenario.label}</strong>
+                    <br />
+                    <span className="muted small">{r.scenario.description}</span>
+                  </th>
+                  <Cell r={r.earth} total={r.problemDaysWithData} />
+                  <Cell r={r.preflightOnly} total={r.problemDaysWithData} />
+                  <Cell r={r.rolling} total={r.problemDaysWithData} />
+                  <Cell r={r.baseline} total={r.problemDaysWithData} best />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <p className="fine-print">
+        One simulated mission per scenario (seed 2026). 20-seed and adversarial results: research/10_ADVERSARIAL_STRESS_TEST_RESULTS.md.
+        Simulated test results — not clinical accuracy.
       </p>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { formatValue } from '../../engine/index';
 import { useMission } from '../../state/MissionContext';
-import { STATUS_EXPLAIN, friendlyDay } from '../plain';
+import { friendlyDay } from '../plain';
 import { assessWhatIf } from '../whatIf';
 import { StatusBadge } from './StatusBadge';
 
@@ -13,17 +13,13 @@ export function SameNumberPanel() {
   const { input } = useMission();
   const results = useMemo(() => DAYS.map((d) => assessWhatIf(input, 'coreTemp', d, VALUE)), [input]);
   return (
-    <section className="panel same" aria-labelledby="same-title">
-      <header className="panel__head">
+    <section className="card same" aria-labelledby="same-title">
+      <header className="same__head">
         <h2 id="same-title">Same number, different meaning</h2>
-        <span className="panel__meta">Live engine result · simulated reading</span>
+        <p className="same__tag">Same temperature. Different mission context. Different interpretation.</p>
       </header>
-      <p className="muted">
-        What if she measured <strong>{formatValue('coreTemp', VALUE)}</strong> on two different days? BASELINE gives two
-        different answers, because what is normal for her changes during the mission.
-      </p>
       <div className="same__grid">
-        {results.map((a) => {
+        {results.map((a, i) => {
           const z = a.zExpected ?? a.zPreflight;
           return (
             <article key={a.missionDay} className={`same__card same__card--${a.status.toLowerCase()}`}>
@@ -31,23 +27,23 @@ export function SameNumberPanel() {
               <p className="same__value">{formatValue('coreTemp', VALUE)}</p>
               <dl className="same__facts">
                 <div>
-                  <dt>Expected for her that day</dt>
+                  <dt>Expected for her</dt>
                   <dd>{a.expected ? formatValue('coreTemp', a.expected.value) : '—'}</dd>
                 </div>
                 <div>
-                  <dt>Distance from expected</dt>
-                  <dd>{z === null ? '—' : `${z > 0 ? '+' : ''}${z.toFixed(1)} × her usual wobble`}</dd>
+                  <dt>Deviation</dt>
+                  <dd>{z === null ? '—' : `${z > 0 ? '+' : '−'}${Math.abs(z).toFixed(1)} SD`}</dd>
                 </div>
               </dl>
               <StatusBadge status={a.status} large />
-              <p className="same__why">{STATUS_EXPLAIN[a.status]}</p>
+              {i === 0 && <span className="same__vs" aria-hidden="true">vs</span>}
             </article>
           );
         })}
       </div>
       <p className="fine-print">
-        Uses the published ISS temperature trend (Stahn et al. 2017), sized to her own in-flight data. Only core
-        temperature has a research-based space model in BASELINE.
+        Live engine result on a simulated reading. SD = her usual day-to-day variation. Expected values use the ISS
+        temperature trend (Stahn et al. 2017) sized to her own data — only temperature has a space model.
       </p>
     </section>
   );

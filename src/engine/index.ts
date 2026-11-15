@@ -15,5 +15,5 @@ export { validateReading, validateSelfReport } from '../domain/validation';
 export * from '../domain/types';
 export { formatDay, phaseOf } from '../domain/phase';
 
-export { runStressTest, NORMAL_DAYS, EPISODE_DAYS, ROLLING_WINDOW_DAYS, type StressRow, type MethodResult } from './stressTest';
+export { runStressTest, rollingFlags, NORMAL_DAYS, EPISODE_DAYS, ROLLING_WINDOW_DAYS, type StressRow, type MethodResult } from './stressTest';
 export { SCENARIOS, type Scenario } from '../data/simulated/scenarios';
